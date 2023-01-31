@@ -1,0 +1,191 @@
+package Demo;
+
+import com.google.common.collect.Lists;
+
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
+import java.awt.event.KeyEvent;
+import java.net.Inet4Address;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+/**
+ * @description: Robot类控制window键鼠实现微信自动发消息的操作
+ * @author: huangt
+ * @date: 2022/5/7
+ */
+public class RobotControl {
+    private Robot robot = null;  //初始化Robot对象
+    private Clipboard clip = null;  //初始化粘贴板对象
+    private static final Integer type = 1;  //消息发送类型，1为微信，2为QQ 球球的快捷键没有适配完
+    private RobotControl() {    //构造函数创建Robot对象
+        try {
+            // 获取系统剪贴板
+            this.clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+            this.robot = new Robot();
+        } catch (AWTException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //打开微信
+    public void openWeChat() {
+        if (type == 1) {
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.keyPress(KeyEvent.VK_ALT);
+            robot.keyPress(KeyEvent.VK_W);
+
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            robot.keyRelease(KeyEvent.VK_ALT);
+        }else if (type == 2) {
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.keyPress(KeyEvent.VK_ALT);
+            robot.keyPress(KeyEvent.VK_G);
+            //释放按键
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            robot.keyRelease(KeyEvent.VK_ALT);
+        }
+        robot.delay(1000);
+    }
+
+    //自动在输入框里查询好友
+    public void chooseFriends(String name) {
+        // 封装文本内容
+        Transferable text = new StringSelection(name);
+        // 把文本内容设置到系统剪贴板
+        clip.setContents(text, null);
+        robot.delay(1000);
+        //打开搜索框
+        if (type == 1) {
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.keyPress(KeyEvent.VK_F);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+        }
+
+        robot.delay(500);
+
+        //将名字复制进去
+        robot.keyPress(KeyEvent.VK_CONTROL);
+        robot.keyPress(KeyEvent.VK_V);
+        robot.keyRelease(KeyEvent.VK_CONTROL);
+
+        robot.delay(1000);
+
+        //按enter键打开这个人
+        robot.keyPress(KeyEvent.VK_ENTER);
+    }
+
+    //发送消息
+    public void sendMessage(String message) {
+        Transferable text = new StringSelection(message);
+        clip.setContents(text, null);
+        robot.delay(500);
+        robot.keyPress(KeyEvent.VK_CONTROL);
+        robot.keyPress(KeyEvent.VK_V);
+        robot.keyRelease(KeyEvent.VK_CONTROL);
+        robot.delay(500);
+
+        robot.keyPress(KeyEvent.VK_ENTER);
+
+        robot.delay(100);
+        //关闭输入框
+//        robot.keyPress(KeyEvent.VK_CONTROL);
+//        robot.keyPress(KeyEvent.VK_ALT);
+//        robot.keyPress(KeyEvent.VK_W);
+
+        robot.keyRelease(KeyEvent.VK_CONTROL);
+        robot.keyRelease(KeyEvent.VK_ALT);
+    }
+
+    //时间处理
+    private Date getDate(String timeStr) throws ParseException {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        //获取当前日期 例如 2020-22-22
+        String currentDate = sdf.format(new Date());
+        //组拼 目标时间 2020-22-22 22:22:22
+        String targetTime = currentDate + " " + timeStr;
+
+        sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        //目标时间 时间戳
+        long targetTimer = sdf.parse(targetTime).getTime();
+        //当前时间 时间戳
+        long currentTimer = new Date().getTime();
+        //判断是否已过目标时间
+        if (targetTimer < currentTimer) {
+            //目标时间加一天
+            targetTimer += 1000 * 60 * 60 * 24;
+        }
+        //返回目标日期
+        return new Date(targetTimer);
+    }
+
+    //打印日志
+    private void printLog(String friendName, String message) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        System.out.println("-----------------发送消息-----------------");
+        System.out.println("当前时间: " + sdf.format(new Date()));
+        System.out.println("发送对象: " + friendName);
+        System.out.println("发送内容: " + message);
+    }
+
+    //定时发送消息
+    public void everyday(String friendName, String timeStr, String message) throws ParseException {
+        //获取目标时间
+        Date date = getDate(timeStr);
+        Timer timer = new Timer();
+        RobotControl robotControl = new RobotControl();
+        //定时任务
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                robotControl.printLog(friendName, message);
+                robotControl.openWeChat();
+                robotControl.chooseFriends(friendName);
+                robotControl.sendMessage(message);
+            }
+        };
+        timer.schedule(timerTask, date, 1000 * 60 * 60 * 24);
+    }
+
+    //一直循环发送消息
+    public void forever(String friendName, String message) {
+        RobotControl robotControl = new RobotControl();
+        robotControl.openWeChat();
+        robotControl.chooseFriends(friendName);
+        for (; ; ) {
+            robotControl.printLog(friendName, message);
+            robotControl.sendMessage(message);
+        }
+    }
+
+    //自动脏话喷人
+    public void autoDirty(String friendName) {
+        RobotControl robotControl = new RobotControl();
+        //可以选择从数据库获取数据
+        List<String> dirtyList = Lists.newArrayList(
+                "曹尼玛", "死废物", "你妈死了", "全家爆炸", "孤儿","潮比","土狗"
+        );
+        robotControl.openWeChat();
+        robotControl.chooseFriends(friendName);
+        dirtyList.forEach(message -> {
+            robotControl.printLog(friendName, message);
+            robotControl.sendMessage(message);
+        });
+    }
+
+    public static void main(String[] args) throws ParseException {
+        RobotControl robotControl = new RobotControl();
+        //可以衍生出自动骂人的功能
+        robotControl.autoDirty("屌毛");
+        //定时发送消息
+//        robotControl.everyday("屌毛", "22:22", "潮比");
+        //一直循环发送消息
+//        robotControl.forever("小YOYO", "？");
+    }
+}
