@@ -178,6 +178,7 @@ public class RobotControl {
             robotControl.sendMessage(message);
         });
     }
+    
 
     public static void main(String[] args) throws ParseException {
         RobotControl robotControl = new RobotControl();
